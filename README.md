@@ -18,7 +18,8 @@ An academic-grade, mathematically rigorous simulation, compilation, and optimiza
 7. [🗜️ DAC-Aware Model Compression & Quantization Sweeps](#7-dac-aware-model-compression--quantization-sweeps)
 8. [High-Performance Systems Engineering & Lock-Free OpenMP](#8-high-performance-systems-engineering--lock-free-openmp)
 9. [Performance Benchmarks & Summary Report](#9-performance-benchmarks--summary-report)
-10. [Compilation, Verification & Execution Guide](#10-compilation-verification--execution-guide)
+10. [🚀 Quick Start: Developer API Usage](#10--quick-start-developer-api-usage)
+11. [Compilation, Verification & Execution Guide](#11-compilation-verification--execution-guide)
 
 ---
 
@@ -139,7 +140,63 @@ Detailed empirical evaluation results of the Silicon Photonics computing engine 
 
 ---
 
-## 10. Compilation, Verification & Execution Guide
+## 10. 🚀 Quick Start: Developer API Usage
+
+### A. Python API (High-Level Integration)
+You can integrate our optoelectronic C-engine directly inside any Python script (e.g. for PyTorch/TensorFlow deployment or custom analytics) using our zero-dependency FFI `PhotonicNetwork` wrapper class:
+
+```python
+from python_binding import PhotonicNetwork
+import numpy as np
+
+# 1. Load the PhoLang compiled network structure
+net = PhotonicNetwork(b"photonic/lang/mnist.pho")
+
+# 2. Restore pre-trained binary weights (.phomodel format)
+net.load_weights(b"temp_baseline_trained.phomodel")
+
+# 3. Prepare a 64-dimensional complex-valued optical input vector
+test_input = np.random.randn(64).astype(np.complex64)
+
+# 4. Execute ultra-fast optoelectronic forward prediction
+predictions = net.predict(test_input)
+print("Output Softmax Classes:", predictions)
+
+# 5. Compress and Quantize the MZI mesh phases on-the-fly
+# Prunes unneeded heaters at 0.10 rad and quantizes to 8-bit DAC voltages
+net.compress(dac_bits=8, active_threshold=0.10)
+```
+
+### B. C API (Low-Level Calibration & EKF)
+For real-time microcontroller/FPGA HIL calibration inside the lab, call the high-performance C engine APIs directly:
+
+```c
+#include "pholang.h"
+#include "calibration.h"
+#include "kalman.h"
+
+// 1. Initialize network and load physical weights
+PhoNetwork *net = pho_network_load("photonic/lang/mnist.pho");
+pho_network_load_weights("photonic/lang/mnist.pho", "temp_baseline_trained.phomodel");
+
+// 2. Perform Clements MZI Decomposition to extract physical phases
+double thetas[4096], phis[4096], diagonal[64];
+clements_decompose(64, &net->sim.layers[0].weights, thetas, phis, diagonal);
+
+// 3. Enable EKF Closed-loop Tracking to dynamically counteract thermal drifts
+EKFState ekf;
+ekf_init(&ekf, 0.1, 0.01);
+double measured_drift = hal_adc_read_phase(0);
+ekf_update(&ekf, measured_drift);
+
+// Calculate corrected micro-heater drive voltage
+double corrected_voltage = v_pi * sqrt(ekf.phase / M_PI);
+hal_dac_write_voltage(0, corrected_voltage);
+```
+
+---
+
+## 11. Compilation, Verification & Execution Guide
 
 ### 1. Compile and Execute the PhoLang Compiler (`phoc`)
 ```sh
