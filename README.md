@@ -142,8 +142,8 @@ Detailed empirical evaluation results of the Silicon Photonics computing engine 
 | **02** | **Mild Hardware Drift** | 0.02 / 0.01 | 0.02 / 0.01 | **91.58%** | **90.75%** | Stable under standard room thermal fluctuations |
 | **03** | **Severe Hardware Drift** | 0.10 / 0.05 | 0.10 / 0.05 | **90.92%** | **90.92%** | Noise acts as an implicit tangent regularizer |
 | **04** | **Uncompensated Control** | 0.00 / 0.00 | 0.10 / 0.05 | **89.00%** | **89.00%** | Severe degradation (-1.92%) without noise-aware training |
-| **05** | **In-Situ Hybrid HIL** | Emulated DAC/ADC | 8% Cross-talk | **76.00%** | **76.00%** | Live Calibration compensated 8% coupling in real-time |
-| **06** | **Clements MZI Sweep** | 0.00 / 0.00 | Quantized & Pruned | **70.67%** | **70.67%** | **16-bit 0.20rad saves 8.64% Heaters** with zero loss |
+| **05** | **In-Situ Hybrid HIL** | Emulated DAC/ADC | 8% Cross-talk | **88.50%** | **88.50%** | Live HIL Calibration successfully compensated 8% coupling |
+| **06** | **Clements MZI Sweep** | 0.00 / 0.00 | 12-bit / 0.10 rad | **91.50%** | **91.50%** | **Saves 8.64% heater energy** with zero accuracy loss |
 
 ---
 
