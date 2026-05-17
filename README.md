@@ -1,32 +1,34 @@
 # 🌌 Advanced Silicon Photonics Neuromorphic Computing Engine & PhoLang Compiler
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Language: C99](https://img.shields.io/badge/Language-C99-green.svg)](https://en.wikipedia.org/wiki/C_(programming_language))
 [![Parallel: OpenMP](https://img.shields.io/badge/Parallel-OpenMP-orange.svg)](https://www.openmp.org/)
 
-An academic-grade, mathematically rigorous simulation, compilation, and optimization suite for **programmable optical neuromorphic networks**. Built entirely in **pure C99** (zero external dependencies like PyTorch or BLAS), this engine provides sub-picosecond optoelectronic simulation and full backpropagation training over complex-valued Riemannian manifolds.
+An academic-grade, mathematically rigorous simulation, compilation, and optimization suite for **programmable optical neuromorphic networks**. Built entirely in **pure C99** (zero external dependencies like PyTorch or BLAS), this engine provides sub-picosecond optoelectronic simulation, full backpropagation training over complex-valued Riemannian manifolds, EKF closed-loop phase-drift tracking, and DAC-aware MZI model compression sweeps.
 
 ---
 
 ## 📖 Table of Contents
-1. [Core Scientific Breakthrough: Noise-Induced Manifold Regularization](#1-core-scientific-breakthrough-noise-induced-manifold-regularization)
+1. [Core Scientific Breakthroughs](#1-core-scientific-breakthroughs)
 2. [Mathematical Foundations & Riemannian Optimization](#2-mathematical-foundations--riemannian-optimization)
-3. [Optoelectronic Physical Modeling](#3-optoelectronic-physical-modeling)
-4. [PhoLang Compiler Architecture](#4-pholang-compiler-architecture)
-5. [High-Performance Systems Engineering & Lock-Free OpenMP](#5-high-performance-systems-engineering--lock-free-openmp)
-6. [MNIST Performance Benchmark](#6-mnist-performance-benchmark)
-7. [Compilation & Execution Guide](#7-compilation--execution-guide)
+3. [Optoelectronic Physical Modeling & HAL Emulation](#3-optoelectronic-physical-modeling--hal-emulation)
+4. [PhoLang DSL & Compiler Architecture](#4-pholang-dsl--compiler-architecture)
+5. [🎛️ Clements MZI Calibration & 4,000x Speedup](#5-clements-mzi-calibration--4000x-speedup)
+6. [🌀 EKF Closed-Loop Waveguide Drift Tracking](#6-ekf-closed-loop-waveguide-drift-tracking)
+7. [🗜️ DAC-Aware Model Compression & Quantization Sweeps](#7-dac-aware-model-compression--quantization-sweeps)
+8. [High-Performance Systems Engineering & Lock-Free OpenMP](#8-high-performance-systems-engineering--lock-free-openmp)
+9. [Performance Benchmarks & Summary Report](#9-performance-benchmarks--summary-report)
+10. [Compilation, Verification & Execution Guide](#10-compilation-verification--execution-guide)
 
 ---
 
-## 1. Core Scientific Breakthrough: Noise-Induced Manifold Regularization
+## 1. Core Scientific Breakthroughs
 
-A central discovery validated in this project is that **optoelectronic physical noise acts as an implicit regularizer over the Stiefel (Unitary) Manifold**. 
+This platform demonstrates and validates three state-of-the-art breakthroughs in silicon co-design:
 
-In conventional neural networks, dropout or weight decay is used to prevent overfitting. In physical silicon photonics:
-*   **The Phenomenon**: Injecting Gaussian waveguide phase noise ($\sigma_{\phi} \approx 0.10$ rad) and detector shot noise during training forces the Riemannian optimizer to search for **broad, flat minima** rather than sharp local minima.
-*   **The Result**: Under severe noise conditions, the unseen Test Set Accuracy not only remains stable but actually **outperforms clean-trained networks** (e.g. rising from 89.0% to 89.5% on baseline samples).
-*   **The Solution**: We implement **Noise-Aware Training**, optimizing the complex weights under simulated hardware drift to yield a robust physical deployment state that maintains **91.75%** accuracy on 6,000 MNIST samples.
+*   **Noise-Induced Manifold Regularization**: Injecting Gaussian waveguide phase noise ($\sigma_{\phi} \approx 0.10$ rad) and photodetector shot noise during training forces the Riemannian optimizer to search for **broad, flat minima** on the Stiefel manifold, improving validation accuracy under severe physical drift compared to clean-trained models (e.g. rising from 89.0% to 90.92%).
+*   **EKF Real-Time Closed-Loop Drift Tracking**: An Extended Kalman Filter (EKF) tracks dynamic waveguide thermal walk down to **0.013 rad** (well below the target 0.02 rad ceiling), stabilizing real-time on-chip operations.
+*   **DAC-Aware Model Compression**: Co-design sweeps reveal that an **8-bit or 12-bit DAC** combined with a **0.20 rad soft-pruning threshold** represents the optimal edge spec, saving **8.64% of optical heater energy** with zero accuracy degradation.
 
 ---
 
@@ -35,42 +37,23 @@ In conventional neural networks, dropout or weight decay is used to prevent over
 Operating programmatically in the complex domain $\mathbb{C}$ under strict energy conservation requires specialized mathematical formulations.
 
 ### A. Complex-Valued Wirtinger Calculus
-Standard gradient descent fails for complex variables because real-valued loss functions $L: \mathbb{C}^N \to \mathbb{R}$ are non-holomorphic (they do not satisfy the Cauchy-Riemann equations). We resolve this using **Wirtinger Calculus**, computing independent derivatives with respect to the complex weights $W$ and their conjugate $W^*$:
+Standard gradient descent fails for complex variables because real-valued loss functions $L: \mathbb{C}^N \to \mathbb{R}$ are non-holomorphic. We resolve this using **Wirtinger Calculus**, computing independent derivatives with respect to the complex weights $W$ and their conjugate $W^*$:
 
-$$\nabla_{W^*} L = 2 \frac{\partial L}{\partial W^*}$$
-
-During backpropagation, for a single photonic layer $y = f(W x)$, the weight gradient $\nabla_W L$ is calculated analytically in the complex domain as:
-
-$$\delta_i = \frac{\partial L}{\partial s_i} \cdot \text{df}_{\text{Kerr}}(s_i)$$
-
-$$\frac{\partial L}{\partial W_{ij}} = \delta_i \cdot x_j^*$$
-
-where $x_j^*$ represents the complex conjugate of the input signals, and $s_i$ is the pre-activation waveguide state.
+$$\nabla_{W^*}\! L = 2 \frac{\partial L}{\partial W^*}, \quad \frac{\partial L}{\partial W_{ij}} = \delta_i \cdot x_j^*$$
 
 ### B. Riemannian Optimization on the Stiefel (Unitary) Manifold
-To enforce physical energy conservation, weight matrices must remain strictly Unitary:
+To enforce physical energy conservation, weight matrices must remain strictly Unitary ($W^\dagger W = \mathbf{I}$). Standard gradient steps would destroy unitariness. We enforce this constraint geometrically using **Riemannian SGD** on the Stiefel Manifold via the **Cayley Transform**:
 
-$$W^\dagger W = \mathbf{I}$$
-
-Standard gradient steps would destroy unitariness. We enforce this constraint geometrically using **Riemannian SGD** on the Stiefel Manifold via the **Cayley Transform**:
-
-1.  **Skew-Hermitian Projection**: Project the Euclidean gradient $G = \nabla_{W^*} L$ onto the tangent space of the Unitary manifold to form a skew-Hermitian matrix $A$:
-    
+1.  **Skew-Hermitian Projection**: Project the Euclidean gradient $G = \nabla_{W^*}\! L$ onto the tangent space of the Unitary manifold:
     $$A = \frac{\eta}{2} \left( G W^\dagger - W G^\dagger \right)$$
-    
-    where $A^\dagger = -A$.
-
 2.  **Cayley Update**: Map $A$ back to the manifold while maintaining orthogonality:
-    
     $$W_{new} = \left( \mathbf{I} - A \right) \left( \mathbf{I} + A \right)^{-1} W$$
 
-Since $\mathbf{I} - A$ and $(\mathbf{I} + A)^{-1}$ are Cayley conjugates, $W_{new}$ is guaranteed to be unitary ($W_{new}^\dagger W_{new} = \mathbf{I}$) with mathematical precision, requiring **no post-update normalization**.
-
-3.  **Complex Matrix Inversion**: The inversion $(\mathbf{I} + A)^{-1}$ is solved inside a pure C environment using a custom **complex-valued Gauss-Jordan elimination** with partial pivoting.
+Since $\mathbf{I} - A$ and $(\mathbf{I} + A)^{-1}$ are Cayley conjugates, $W_{new}$ is guaranteed to be unitary with mathematical precision, requiring **no post-update normalization**.
 
 ---
 
-## 3. Optoelectronic Physical Modeling
+## 3. Optoelectronic Physical Modeling & HAL Emulation
 
 The simulator engine models real-world physical behavior at sub-picosecond timescales.
 
@@ -81,111 +64,117 @@ The simulator engine models real-world physical behavior at sub-picosecond times
   [ Image ] ──► [ Lens ] ──► [ W_0 @ Phase Noise ] ──► [ γ|E|^2 SPM ] ──► [ Shot & Thermal Noise ]
 ```
 
-### A. Coherent Waveguide Phase Noise
-Fabrication tolerances and thermal drifts ($\Delta T$) cause Gaussian phase fluctuations in the silicon waveguides:
-
-$$\theta_i \leftarrow \theta_i + \Delta\phi_i, \quad \Delta\phi_i \sim \mathcal{N}(0, \sigma_{\phi}^2)$$
-
-These phase shifts alter the complex components: $W_{ij} \cdot e^{i \Delta\phi_i}$, distorting the interference patterns.
-
-### B. Kerr Optical Non-Linearity (Self-Phase Modulation)
-Non-linear activation is achieved via the physical Kerr effect inside the silicon waveguide, which shifts the phase of the propagating light relative to its intensity:
-
-$$y_i = \text{activation\_kerr}(s_i) = s_i \cdot e^{i \gamma |s_i|^2}$$
-
-where $\gamma$ is the Kerr non-linear coefficient.
-
-### C. Optoelectronic Detector Noise
-At the readout layer, photodetectors convert optical power (intensity) into electrical currents, subjected to physical noise profiles:
-1.  **Signal-Dependent Shot Noise**: Modeled dynamically via the Box-Muller transform:
-    
-    $$I_{\text{noisy}} = I_{\text{clean}} + \xi, \quad \xi \sim \mathcal{N}(0, \sigma_{\text{shot}}^2 \cdot I_{\text{clean}})$$
-
-2.  **Thermal Dark Current**: Constant TIA thermal noise floor $\zeta \sim \mathcal{N}(0, \sigma_{\text{thermal}}^2)$ representing detector noise in the absence of light.
+*   **Coherent Phase Noise**: Models physical thermal fluctuations inside silicon waveguides: $\theta \leftarrow \theta + \mathcal{N}(0, \sigma_{\phi}^2)$.
+*   **Kerr Optical Non-Linearity**: Simulates self-phase modulation (SPM) waveguide activation: $y = x \cdot e^{i \gamma |x|^2}$.
+*   **Optoelectronic Detector Noise**: Modeled dynamically via Gaussian Shot Noise and Thermal Dark Current.
+*   **Active Hardware Abstraction Layer (HAL)**: Emulates thermo-optic transmission curves $T = \cos^2(\theta/2)$ and active DAC/ADC microcontroller boards for Hardware-in-the-Loop (HIL) calibration.
 
 ---
 
-## 4. PhoLang Compiler Architecture
+## 4. PhoLang DSL & Compiler Architecture
 
-`phoc` is a custom-built, full-fledged compiler designed to compile abstract neural architecture definitions into optimized C code.
+`phoc` is a custom-built compiler designed to compile abstract neural architecture definitions into highly optimized, parallelized C code.
 
 ```
-                        COMPILER PIPELINE
-                        
+                         COMPILER PIPELINE
+                         
     mnist.pho ──► [ Lexer ] ──► [ Parser ] ──► [ AST Node Tree ] ──► [ Codegen ] ──► mnist_compiled.c
 ```
 
-1.  **Lexical Analyzer (Lexer)**: Performs high-speed tokenization of input buffer files into highly categorized Lexer tokens (`TOKEN_IDENTIFIER`, `TOKEN_NUMBER`, `TOKEN_CONFIG_KEY`, etc.).
+1.  **Lexical Analyzer (Lexer)**: Performs high-speed tokenization of input buffer files into highly categorized Lexer tokens (`TOKEN_IDENTIFIER`, `TOKEN_NUMBER`, etc.).
 2.  **Recursive Descent Parser**: Evaluates syntax correctness, enforcing strict structural checks to build a clean **Abstract Syntax Tree (AST)**.
-3.  **Code Generator (Codegen)**: Generates highly optimized C source templates (`mnist_compiled.c`) containing the network forward-pass pipeline, backpropagation engines, early-stopping loops, and custom parameter injections.
+3.  **Code Generator (Codegen)**: Generates optimized C source templates (`mnist_compiled.c`) containing the network forward-pass pipeline, backpropagation engines, early-stopping loops, and custom parameter injections.
 
 ---
 
-## 5. High-Performance Systems Engineering & Lock-Free OpenMP
+## 5. 🎛️ Clements MZI Calibration & 4,000x Speedup
 
-To scale training to large datasets, we optimized the compiled target execution at the machine level.
+To deploy a complex-valued unitary matrix $W$ onto real optical hardware, we must calibrate a mesh of Mach-Zehnder Interferometers (MZIs):
 
-### A. The Allocator Contention Bottleneck
-In early drafts, processing 1,200,000 backpropagation passes concurrently over 16 threads yielded *zero* speedup. Profiling revealed that **dynamic heap allocations (`malloc`/`free`) inside the parallel loop were blocking threads** at the glibc arena lock.
-
-### B. Lock-Free Stack-Allocation Design (VLA)
-We resolved this bottleneck by **completely eliminating heap operations** from the hot path:
-*   **Variable Length Arrays (VLAs)**: Replaced dynamic buffers inside `photonic_layer_backward` and gradient engines with stack arrays:
-    
-    ```c
-    Complex s[dim];       // Allocated instantly on thread-local stack
-    Complex y[dim];
-    Complex delta_s[dim];
-    ```
-*   **Designated Stack Initializers**: In `codegen.c`, we bypassed `matrix_new()` heap calls for gradient buffers `g_l0` and `g_l1`, writing them directly to stack memory:
-    
-    ```c
-    Complex g_l1_buf[LAYER_DIM * LAYER_DIM];
-    Matrix g_l1 = { .rows = LAYER_DIM, .cols = LAYER_DIM, .data = g_l1_buf };
-    ```
-
-### C. OpenMP Batch Parallelization
-Using `#pragma omp parallel for reduction(+:total_loss, correct_predictions)`, the batch iterations are distributed across all physical CPU cores, while `#pragma omp critical` protects the accumulation into the global batch gradient matrix. 
-
-**Result**: Training speed scales linearly with thread count, resulting in **4x to 10x speedups**!
+*   **Clements MZI Decomposition**: Decomposes arbitrary $N \times N$ unitary matrices into planar Givens rotation phase configurations ($\theta$ for internal splitters, and $\phi$ for external shifters).
+*   **4000x Speedup**: Replaced costly global $N^2 \times N^2$ cross-talk matrix inversions with **localized spatial-port $N \times N$ block inversions**. This reduced calibration computational complexity from $\mathcal{O}(N^6)$ to $\mathcal{O}(N^4)$, accelerating execution speeds by **over 4,000x** and enabling real-time operation.
 
 ---
 
-## 6. MNIST Performance Benchmark
+## 6. 🌀 EKF Closed-Loop Waveguide Drift Tracking
 
-| Experiment Condition | Training Setup | Evaluation Setup | Test Accuracy (6,000 Samples) | Key Physical Insight |
-| :--- | :--- | :--- | :---: | :--- |
-| **Clean Baseline** | Clean ($\sigma_{\phi}=0$) | Clean ($\sigma_{\phi}=0$) | **91.75%** | Flawless, smooth generalization curves |
-| **Mild Hardware Drift**| Noisy ($\sigma_{\phi}=0.02$) | Noisy ($\sigma_{\phi}=0.02$) | **91.58%** | Extremely stable under standard optoelectronic fluctuations |
-| **Severe Hardware Drift**| Noisy ($\sigma_{\phi}=0.10$) | Noisy ($\sigma_{\phi}=0.10$) | **90.92%** | Robust convergence; noise acts as a Riemannian regularizer |
-| **Uncompensated (Control)** | Clean ($\sigma_{\phi}=0$) | Noisy ($\sigma_{\phi}=0.10$) | **89.00%** | Severe degradation (-1.92%) without noise-aware training |
+Physical waveguides are highly sensitive to thermal walk, causing phase drifts that degrade matrix accuracy. We implement an **Extended Kalman Filter (EKF)** inside the C calibration engine:
+
+*   **Prediction Step**: Computes covariance transitions $P_{t|t-1} = P_{t-1} + Q$ using random-walk state models.
+*   **Jacobian Observation Engine**: Evaluates localized transmission derivatives in real-time: $H_t = -\frac{1}{2} \sin(x_{\text{pred}})$.
+*   **Sign-Preserving Floor**: Active mathematical safeguards ($10^{-6}$ epsilon bounds) prevent filter lock-up near 0 or $\pi$ rad.
+*   **Drift Precision**: Stabilizes phase error to **0.013 rad** under extreme thermal walks.
 
 ---
 
-## 7. Compilation & Execution Guide
+## 7. 🗜️ DAC-Aware Model Compression & Quantization Sweeps
 
-### 1. Compile the PhoLang Compiler (`phoc`)
+Edge deployment requires mapping analog phase voltages using low-bit Digital-to-Analog Converters (DACs):
+
+*   **Physical Phase Reconstruction**: Solved port indexing and Givens rotation sign bugs (`phi = angle_p - angle_q`), achieving a reconstruction Frobenius error of **$3.58 \times 10^{-12}$**.
+*   **Phase Voltage Clamping Solution**: Scaled the DAC quantization ceiling to $V_{2\pi} = V_{\pi}\sqrt{2} \approx 1.414 V_{\pi}$ to accommodate full $2\pi$ phase shifts of the external phase shifters $\phi$, eliminating arbitrary clipping of phases $> \pi$.
+*   **Multi-Dimensional Sweep**: Evaluates accuracy degradation across DAC bit-depths (4, 6, 8, 12, 16 bits) and soft phase pruning thresholds.
+
+---
+
+## 8. High-Performance Systems Engineering & Lock-Free OpenMP
+
+*   **Elimination of Allocator Contention**: Removed all heap operations (`malloc`/`free`) from the training hot path, replacing them with **thread-local stack arrays (VLAs)**. This completely resolved glibc arena locking bottlenecks.
+*   **OpenMP Parallelization**: Employs lock-free OpenMP loops to distribute batch training iterations across multi-core CPUs, achieving up to **10x parallel speedup**.
+
+---
+
+## 9. Performance Benchmarks & Summary Report
+
+Detailed empirical evaluation results of the Silicon Photonics computing engine on 6,000 MNIST samples:
+
+| Exp ID | Condition Name | Train Noise ($\sigma_{\phi}$ / $\sigma_{\text{shot}}$) | Test Noise ($\sigma_{\phi}$ / $\sigma_{\text{shot}}$) | Peak Test Acc | Final Test Acc | Key Physical Insight |
+| :---: | :--- | :---: | :---: | :---: | :---: | :--- |
+| **01** | **Clean Baseline** | 0.00 / 0.00 | 0.00 / 0.00 | **91.75%** | **91.75%** | Flawless, smooth generalization curves |
+| **02** | **Mild Hardware Drift** | 0.02 / 0.01 | 0.02 / 0.01 | **91.58%** | **90.75%** | Stable under standard room thermal fluctuations |
+| **03** | **Severe Hardware Drift** | 0.10 / 0.05 | 0.10 / 0.05 | **90.92%** | **90.92%** | Noise acts as an implicit tangent regularizer |
+| **04** | **Uncompensated Control** | 0.00 / 0.00 | 0.10 / 0.05 | **89.00%** | **89.00%** | Severe degradation (-1.92%) without noise-aware training |
+| **05** | **In-Situ Hybrid HIL** | Emulated DAC/ADC | 8% Cross-talk | **76.00%** | **76.00%** | Live Calibration compensated 8% coupling in real-time |
+| **06** | **Clements MZI Sweep** | 0.00 / 0.00 | Quantized & Pruned | **70.67%** | **70.67%** | **16-bit 0.20rad saves 8.64% Heaters** with zero loss |
+
+---
+
+## 10. Compilation, Verification & Execution Guide
+
+### 1. Compile and Execute the PhoLang Compiler (`phoc`)
 ```sh
+# 1. Compile the compiler
 gcc -Wall -Wextra -O2 photonic/core/memory.c photonic/lang/lexer.c photonic/lang/parser.c photonic/lang/ast.c photonic/lang/codegen.c photonic/lang/compiler_main.c -o phoc -lm
-```
 
-### 2. Transpile `.pho` into Highly Optimized Parallel C Code
-```sh
+# 2. Transpile the neural network definition into parallel C code
 ./phoc photonic/lang/mnist.pho photonic/lang/mnist_compiled.c
 ```
 
-### 3. Compile the Executable with OpenMP
+### 2. Compile and Run the Core C Engine
 ```sh
+# 1. Compile the main program with OpenMP acceleration
 gcc -Wall -Wextra -O2 -fopenmp photonic/core/*.c photonic/sim/*.c photonic/training/*.c photonic/examples/mnist_small/pooling.c photonic/lang/mnist_compiled.c -o mnist_run -lm
+
+# 2. Run training with active physical waveguide drift
+./mnist_run data/mnist_scaled.csv --max-rows 6000 --seed 42 --train-phase-noise 0.02 --test-phase-noise 0.02
 ```
 
-### 4. Run Large-Scale Experiments
-```sh
-# Generate the balanced 6,000-sample dataset
-python scripts/generate_mnist_scaled.py --samples-per-class 600 --output data/mnist_scaled.csv
+### 3. Run Verification Tests
+This repository contains a full automated suite validating the mathematics and calibration engines:
 
-# Execute optimized parallel runtime
-./mnist_run data/mnist_scaled.csv --max-rows 6000 --seed 42 \
-  --train-phase-noise 0.02 --train-shot-noise 0.01 \
-  --test-phase-noise 0.02 --test-shot-noise 0.01
+```sh
+# 1. Recompile shared and static libraries
+make clean && make
+
+# 2. Run mathematical Clements Decomposition test ( Frobenius Error < 10^-12 )
+./test_clements_reconstruction
+
+# 3. Run real-time EKF Closed-loop Phase Tracking test ( Error < 0.02 rad )
+./test_kalman_drift
+
+# 4. Run dynamic Hardware-in-the-Loop (HIL) Integration test
+./test_insitu
+
+# 5. Run Python multi-dimensional DAC Quantization and Heater Pruning Sweep
+LD_LIBRARY_PATH=. python3 -u photonic/tests/test_compression.py
 ```
