@@ -21,8 +21,9 @@ An academic-grade, mathematically rigorous simulation, compilation, and optimiza
 7. [🗜️ DAC-Aware Model Compression & Quantization Sweeps](#7-dac-aware-model-compression--quantization-sweeps)
 8. [High-Performance Systems Engineering & Lock-Free OpenMP](#8-high-performance-systems-engineering--lock-free-openmp)
 9. [Performance Benchmarks & Summary Report](#9-performance-benchmarks--summary-report)
-10. [🚀 Quick Start: Developer API Usage](#10--quick-start-developer-api-usage)
-11. [Compilation, Verification & Execution Guide](#11-compilation-verification--execution-guide)
+10. [🔮 Future Roadmap: Version 4.0 & Beyond](#10-future-roadmap-version-40--beyond)
+11. [🚀 Quick Start: Developer API Usage](#11--quick-start-developer-api-usage)
+12. [Compilation, Verification & Execution Guide](#12-compilation-verification--execution-guide)
 
 ---
 
@@ -147,7 +148,20 @@ Detailed empirical evaluation results of the Silicon Photonics computing engine 
 
 ---
 
-## 10. 🚀 Quick Start: Developer API Usage
+## 10. 🔮 Future Roadmap: Version 4.0 & Beyond
+
+To scale this open-source suite into standard commercial silicon foundries and achieve next-generation neuromorphic processing speeds, our future development roadmap targets three major research pillars:
+
+1.  **Deep Multi-Layer Optical Cascading (Deep ONNs)**:
+    Currently, our architecture runs on a single-layer MZI mesh. Implementing **cascaded multi-layer networks** with electro-optic non-linear activation layers will enable the engine to solve complex high-dimensional tasks (like ImageNet classification) at **99%+ accuracy** with zero digital CPU/GPU processing.
+2.  **Physical Semiconductor Foundry Tape-out**:
+    Transition our high-fidelity HIL simulation drivers into physical micro-control drivers for laboratory testing of real silicon photonics chips fabricated by global open foundries (e.g., IMEC or AIM Photonics).
+3.  **Spatial-Temporal Neural EKF Control**:
+    Scale our EKF algorithm into a **Multi-agent Neural EKF** or Reinforcement Learning agent capable of simultaneously mitigating complex, non-linear thermal cross-talk across ultra-dense meshes with over $10,000$ active waveguides.
+
+---
+
+## 11. 🚀 Quick Start: Developer API Usage
 
 ### A. Python API (High-Level Integration)
 You can integrate our optoelectronic C-engine directly inside any Python script (e.g. for PyTorch/TensorFlow deployment or custom analytics) using our zero-dependency FFI `PhotonicNetwork` wrapper class:
@@ -221,7 +235,7 @@ Since our core simulation engine is compiled as a standard dynamic shared librar
 
 ---
 
-## 11. Compilation, Verification & Execution Guide
+## 12. Compilation, Verification & Execution Guide
 
 ### 1. Compile and Execute the PhoLang Compiler (`phoc`)
 ```sh
