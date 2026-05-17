@@ -36,8 +36,14 @@ struct PhoNetwork {
     double   shot_noise;
 };
 
-// Thread-local or global error storage
+// Thread-local error storage for safe multi-threaded usage
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L && !defined(__STDC_NO_THREADS__)
+static _Thread_local char g_last_error[512] = "";
+#elif defined(__GNUC__) || defined(__clang__)
+static __thread char g_last_error[512] = "";
+#else
 static char g_last_error[512] = "";
+#endif
 
 const char* pho_last_error(void) {
     return g_last_error;
@@ -50,19 +56,16 @@ static void set_last_error(const char *fmt, ...) {
     va_end(args);
 }
 
+#include "../core/photonic_rng.h"
+
 // Helper to inject phase noise to weights
 static void inject_weights_phase_noise(SimState *sim, double noise_std) {
     if (noise_std <= 0.0) return;
+    PhoRng rng = pho_rng_init((uint64_t)(noise_std * 1e9) ^ 0xDEADBEEF);
     int dim = sim->layer_dim;
     for (int l = 0; l < sim->num_layers; l++) {
         for (int i = 0; i < dim; i++) {
-            // Sample random phase drift using Box-Muller transform
-            double u1 = (double)rand() / RAND_MAX;
-            double u2 = (double)rand() / RAND_MAX;
-            if (u1 < 1e-15) u1 = 1e-15;
-            double z = sqrt(-2.0 * log(u1)) * cos(2.0 * 3.141592653589793 * u2);
-            double phase_drift = z * noise_std;
-            
+            double phase_drift = pho_rng_normal(&rng, 0.0, noise_std);
             Complex phase_factor = complex_new(cos(phase_drift), sin(phase_drift));
             for (int j = 0; j < dim; j++) {
                 sim->layers[l].weights.data[i * dim + j] = complex_mul(sim->layers[l].weights.data[i * dim + j], phase_factor);
@@ -80,6 +83,11 @@ PhoNetwork* pho_network_load(const char* pho_file) {
     }
     fseek(f, 0, SEEK_END);
     long size = ftell(f);
+    if (size < 0) {
+        set_last_error("Failed to determine file size: %s", pho_file);
+        fclose(f);
+        return NULL;
+    }
     fseek(f, 0, SEEK_SET);
     char *buf = (char *)malloc(size + 1);
     if (!buf) {
@@ -631,8 +639,13 @@ PhoNetwork* pho_network_load_weights(const char* pho_file, const char* weights_p
     for (int l = 0; l < num_layers; l++) {
         double kerr = 0.0;
         double gain = 0.0;
-        fread(&kerr, sizeof(double), 1, f);
-        fread(&gain, sizeof(double), 1, f);
+        if (fread(&kerr, sizeof(double), 1, f) != 1 ||
+            fread(&gain, sizeof(double), 1, f) != 1) {
+            set_last_error("Failed to read layer %d config from weights file", l);
+            fclose(f);
+            pho_network_free(net);
+            return NULL;
+        }
         net->sim.layers[l].kerr_gamma = kerr;
         net->sim.layers[l].detector_gain = gain;
 

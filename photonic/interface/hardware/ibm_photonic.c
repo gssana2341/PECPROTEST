@@ -8,10 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
+#include "../../core/photonic_rng.h"
 
 // ─── Global State for Emulation & Physical Interfaces ────────────────
 
@@ -25,13 +22,13 @@ static const double V_PI = 3.3;             // 3.3V for pi phase shift
 static const double DETECTOR_RESPONSIVITY = 0.85; // A/W photodiode efficiency
 static const double SHOT_NOISE_STD = 0.02;  // Simulated quantum shot noise variance
 
-// Helper for Gaussian noise using Box-Muller transform
+// Module-level RNG state for HAL emulation
+static PhoRng g_hal_rng = {{55555, 11111}};
+
+// Helper for Gaussian noise using thread-safe PRNG
 static double sample_gaussian_noise(double std_dev) {
     if (std_dev <= 0.0) return 0.0;
-    double u1 = (double)rand() / RAND_MAX;
-    double u2 = (double)rand() / RAND_MAX;
-    if (u1 < 1e-15) u1 = 1e-15;
-    return sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2) * std_dev;
+    return pho_rng_normal(&g_hal_rng, 0.0, std_dev);
 }
 
 // ─── HAL Driver Implementation ──────────────────────────────────────

@@ -2,12 +2,21 @@
 #include "memory.h"
 #include <math.h>
 #include <stdio.h>
+#include <stdint.h>
 
 Matrix matrix_new(size_t rows, size_t cols) {
     Matrix m;
     m.rows = rows;
     m.cols = cols;
     if (rows > 0 && cols > 0) {
+        // Guard against integer overflow: rows * cols * sizeof(Complex)
+        if (rows > SIZE_MAX / cols || (rows * cols) > SIZE_MAX / sizeof(Complex)) {
+            fprintf(stderr, "[matrix_new] Overflow: %zu x %zu exceeds addressable memory\n", rows, cols);
+            m.data = NULL;
+            m.rows = 0;
+            m.cols = 0;
+            return m;
+        }
         m.data = (Complex *)pho_alloc(rows * cols * sizeof(Complex), "Matrix.data");
         if (!m.data) { m.rows = m.cols = 0; return m; }
         for (size_t i = 0; i < rows * cols; i++) {

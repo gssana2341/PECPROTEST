@@ -16,7 +16,7 @@ pub struct Complex {
 pub struct Matrix {
     pub rows: usize,
     pub cols: usize,
-    pub data: *mut f64,
+    pub data: *mut Complex,  // Must match C definition: Complex*, not f64*
 }
 
 // ─── FFI Bindings ───────────────────────────────────────────────────

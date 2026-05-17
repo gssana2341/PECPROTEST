@@ -1,5 +1,6 @@
 #include "gradient_analytic.h"
 #include "../core/activation.h"
+#include "../core/memory.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -14,9 +15,17 @@ void photonic_layer_backward(
     Complex        *input_grad,   // output: input gradient (dL/din)
     int             dim
 ) {
-    Complex s[dim];
-    Complex y[dim];
-    Complex delta_s[dim];
+    // Use heap instead of VLA for portability (MSVC) and stack safety
+    Complex *s       = (Complex *)pho_alloc(dim * sizeof(Complex), "backward.s");
+    Complex *y       = (Complex *)pho_alloc(dim * sizeof(Complex), "backward.y");
+    Complex *delta_s = (Complex *)pho_alloc(dim * sizeof(Complex), "backward.delta_s");
+    if (!s || !y || !delta_s) {
+        fprintf(stderr, "[backward] Memory allocation failed for dim=%d\n", dim);
+        pho_free(s, "backward.s");
+        pho_free(y, "backward.y");
+        pho_free(delta_s, "backward.delta_s");
+        return;
+    }
     
     // 1. Compute intermediate sum and forward activation
     for (int i = 0; i < dim; i++) {
@@ -69,6 +78,10 @@ void photonic_layer_backward(
         }
     input_grad[j] = sum;
     }
+
+    pho_free(s, "backward.s");
+    pho_free(y, "backward.y");
+    pho_free(delta_s, "backward.delta_s");
 }
 
 // Skew-hermitian matrix projection for Unitary manifold

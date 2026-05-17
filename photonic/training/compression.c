@@ -1,7 +1,9 @@
 // compression.c — Model compression and quantization engine implementation
 
 #include "compression.h"
-#include "complex.h"
+#include "../core/complex.h"
+#include "../core/matrix.h"
+#include "../core/memory.h"
 #include <math.h>
 #include <stdlib.h>
 
@@ -73,11 +75,11 @@ int clements_reconstruct(
     int n_mzis = N * (N - 1) / 2;
 
     // Precompute the forward Givens rotation port pairs (p, q) to guarantee 100% exact reverse ordering!
-    int *p_arr = (int *)malloc(n_mzis * sizeof(int));
-    int *q_arr = (int *)malloc(n_mzis * sizeof(int));
+    int *p_arr = (int *)pho_alloc(n_mzis * sizeof(int), "clements.p_arr");
+    int *q_arr = (int *)pho_alloc(n_mzis * sizeof(int), "clements.q_arr");
     if (!p_arr || !q_arr) {
-        free(p_arr);
-        free(q_arr);
+        pho_free(p_arr, "clements.p_arr");
+        pho_free(q_arr, "clements.q_arr");
         return -1;
     }
 
@@ -112,8 +114,8 @@ int clements_reconstruct(
         }
     }
 
-    free(p_arr);
-    free(q_arr);
+    pho_free(p_arr, "clements.p_arr");
+    pho_free(q_arr, "clements.q_arr");
     return 0;
 }
 

@@ -37,12 +37,12 @@ int run_insitu_training(SimState *sim, const InSituConfig *cfg) {
     int n_heaters = dim * dim;
 
     // Allocate memory for DAC control voltages
-    double *dac_voltages = (double *)calloc(n_heaters, sizeof(double));
-    double *adc_intensities = (double *)calloc(dim, sizeof(double));
+    double *dac_voltages = (double *)pho_alloc(n_heaters * sizeof(double), "insitu.dac_voltages");
+    double *adc_intensities = (double *)pho_alloc(dim * sizeof(double), "insitu.adc_intensities");
     if (!dac_voltages || !adc_intensities) {
         fprintf(stderr, "[In-Situ Error] Memory allocation failed.\n");
-        free(dac_voltages);
-        free(adc_intensities);
+        pho_free(dac_voltages, "insitu.dac_voltages");
+        pho_free(adc_intensities, "insitu.adc_intensities");
         free_dataset(&dataset);
         hal_shutdown();
         return -1;
@@ -63,7 +63,7 @@ int run_insitu_training(SimState *sim, const InSituConfig *cfg) {
                                         (dataset.num_samples - i) : (size_t)cfg->batch_size;
 
             // Allocate gradient accumulators for each layer in C
-            Matrix *batch_grads = (Matrix *)malloc(num_layers * sizeof(Matrix));
+            Matrix *batch_grads = (Matrix *)pho_alloc(num_layers * sizeof(Matrix), "insitu.batch_grads");
             for (int l = 0; l < num_layers; l++) {
                 batch_grads[l] = matrix_new(dim, dim);
             }
@@ -93,7 +93,8 @@ int run_insitu_training(SimState *sim, const InSituConfig *cfg) {
                 double pool_buf[64];
                 optical_lens_pool_28_to_8(img, pool_buf);
 
-                Complex *input_c = (Complex *)calloc(dim, sizeof(Complex));
+                Complex *input_c = (Complex *)pho_alloc(dim * sizeof(Complex), "insitu.input_c");
+                memset(input_c, 0, dim * sizeof(Complex));
                 for (int k = 0; k < dim; k++) {
                     if (k < 64) {
                         input_c[k] = complex_new(pool_buf[k], 0.0);
@@ -101,7 +102,8 @@ int run_insitu_training(SimState *sim, const InSituConfig *cfg) {
                 }
 
                 // Simulate physical chip forward pass under DAC thermal modulation
-                Complex *output_c = (Complex *)calloc(dim, sizeof(Complex));
+                Complex *output_c = (Complex *)pho_alloc(dim * sizeof(Complex), "insitu.output_c");
+                memset(output_c, 0, dim * sizeof(Complex));
                 sim_forward(sim, input_c, output_c);
 
                 // Read physical ADC photodetector intensities
@@ -126,13 +128,16 @@ int run_insitu_training(SimState *sim, const InSituConfig *cfg) {
                 }
 
                 // Compute CPU backpropagation gradients
-                Complex *current_grad = (Complex *)calloc(dim, sizeof(Complex));
+                Complex *current_grad = (Complex *)pho_alloc(dim * sizeof(Complex), "insitu.current_grad");
+                memset(current_grad, 0, dim * sizeof(Complex));
                 loss_cross_entropy_softmax_optical_grad(output_c, gain, target, 10, current_grad);
 
                 for (int l = num_layers - 1; l >= 0; l--) {
-                    Complex *g_buf = (Complex *)calloc(dim * dim, sizeof(Complex));
+                    Complex *g_buf = (Complex *)pho_alloc(dim * dim * sizeof(Complex), "insitu.g_buf");
+                    memset(g_buf, 0, dim * dim * sizeof(Complex));
                     Matrix g_mat = { .rows = dim, .cols = dim, .data = g_buf };
-                    Complex *next_grad = (Complex *)calloc(dim, sizeof(Complex));
+                    Complex *next_grad = (Complex *)pho_alloc(dim * sizeof(Complex), "insitu.next_grad");
+                    memset(next_grad, 0, dim * sizeof(Complex));
 
                     const Complex *l_input = (l == 0) ? input_c : sim->layer_outputs[l - 1];
 
@@ -152,13 +157,13 @@ int run_insitu_training(SimState *sim, const InSituConfig *cfg) {
                     }
 
                     memcpy(current_grad, next_grad, dim * sizeof(Complex));
-                    free(g_buf);
-                    free(next_grad);
+                    pho_free(g_buf, "insitu.g_buf");
+                    pho_free(next_grad, "insitu.next_grad");
                 }
 
-                free(input_c);
-                free(output_c);
-                free(current_grad);
+                pho_free(input_c, "insitu.input_c");
+                pho_free(output_c, "insitu.output_c");
+                pho_free(current_grad, "insitu.current_grad");
             }
 
             // Apply C Riemannian Cayley Unitary Updates
@@ -173,7 +178,7 @@ int run_insitu_training(SimState *sim, const InSituConfig *cfg) {
                 unitary_update_cayley(&sim->layers[l].weights, &batch_grads[l], cfg->lr);
                 matrix_free(&batch_grads[l]);
             }
-            free(batch_grads);
+            pho_free(batch_grads, "insitu.batch_grads");
         }
 
         double epoch_loss = total_loss / dataset.num_samples;
@@ -182,8 +187,8 @@ int run_insitu_training(SimState *sim, const InSituConfig *cfg) {
     }
 
     // Free buffers and safely shutdown chip heaters
-    free(dac_voltages);
-    free(adc_intensities);
+    pho_free(dac_voltages, "insitu.dac_voltages");
+    pho_free(adc_intensities, "insitu.adc_intensities");
     free_dataset(&dataset);
     hal_shutdown();
 

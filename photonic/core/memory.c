@@ -13,7 +13,7 @@ void *pho_alloc(size_t size, const char *tag) {
                 tag ? tag : "unknown", size);
         return NULL;
     }
-    g_alloc_count++;
+    atomic_fetch_add(&g_alloc_count, 1);
     return ptr;
 }
 
@@ -21,7 +21,7 @@ void pho_free(void *ptr, const char *tag) {
     (void)tag; // Tracked via logging in a real system
     if (ptr) {
         free(ptr);
-        g_alloc_count--;
+        atomic_fetch_sub(&g_alloc_count, 1);
     }
 }
 

@@ -53,5 +53,9 @@ void energy_print_report(const EnergyTracker *t) {
     printf("Operations:  %lld mul, %lld add\n", t->mul_count, t->add_count);
     printf("Photonic:    %.4f pJ\n", pho);
     printf("Electronic:  %.4f pJ\n", elc);
-    printf("Ratio:       %.2fx savings\n", elc / (pho > 0 ? pho : 1.0));
+    if (pho > 0.0) {
+        printf("Ratio:       %.2fx savings\n", elc / pho);
+    } else {
+        printf("Ratio:       N/A (no photonic operations recorded)\n");
+    }
 }

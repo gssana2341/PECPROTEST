@@ -10,6 +10,7 @@ SRC_DIRS = photonic/core \
            photonic/interface \
            photonic/interface/hardware \
            photonic/lang \
+           photonic/security \
            photonic/examples/mnist_small
 
 # Exclude generated code, test suites, and executable main entry points from core library

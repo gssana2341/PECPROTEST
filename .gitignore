@@ -3,11 +3,19 @@
 # 1. Compiled Binaries (WSL / Unix Executables)
 phoc
 mnist_run
+mnist_test
+test_runner
+test_analytic
+test_clements_reconstruct
+test_insitu
+xor_test
 *.o
 *.a
 *.so
+*.dylib
+*.dll
 *.out
-test_insitu
+*.exe
 *.phomodel
 
 # 2. Automatically Generated Files by PhoLang Transpiler
@@ -34,3 +42,4 @@ __pycache__/
 # 6. AI Agent Workspace Cache
 .gemini/
 antigravity/
+

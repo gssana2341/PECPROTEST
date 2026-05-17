@@ -26,6 +26,11 @@ int main(int argc, char **argv) {
     }
     fseek(f, 0, SEEK_END);
     long len = ftell(f);
+    if (len < 0) {
+        fprintf(stderr, "Failed to determine file size for %s\n", input_path);
+        fclose(f);
+        return 1;
+    }
     fseek(f, 0, SEEK_SET);
     
     char *source = malloc(len + 1);

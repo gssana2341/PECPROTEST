@@ -11,18 +11,13 @@
 #include "../core/photonic.h"
 #include "../core/activation.h"
 #include "../core/memory.h"
+#include "../core/photonic_rng.h"
+#include "photonic_sim.h"
 
-// ─── Photonic Simulator State ───────────────────────────────────────
+// Use the struct definition from the header (photonic_sim.h) — no redefinition here.
 
-typedef struct {
-    int             num_layers;
-    int             layer_dim;      // dimension of each photonic layer
-    PhotonicLayer  *layers;         // array of layers
-    double          total_energy;   // accumulated energy consumption
-    long long       total_ops;      // total operation count
-    Complex       **layer_outputs;  // intermediate outputs for training/debug
-    double          shot_noise;     // detector shot noise std dev
-} SimState;
+// Module-level RNG state for simulation noise
+static PhoRng g_sim_rng = {{98765, 43210}};
 
 // Initialize simulator state
 SimState sim_init(int num_layers, int layer_dim) {
@@ -72,18 +67,6 @@ void sim_free(SimState *state) {
             state->layer_outputs = NULL;
         }
     }
-}
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-
-static double rand_normal_sim(double mean, double std) {
-    double u1 = (double)rand() / RAND_MAX;
-    double u2 = (double)rand() / RAND_MAX;
-    if (u1 < 1e-15) u1 = 1e-15;
-    double z = sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
-    return mean + z * std;
 }
 
 // Run forward pass through all layers
@@ -136,8 +119,8 @@ int sim_forward(SimState *state, const Complex *input, Complex *output) {
             double shot_std = state->shot_noise * sqrt(intensity);
             double thermal_std = state->shot_noise * 0.5; // background thermal noise
             
-            double xi = rand_normal_sim(0.0, shot_std);
-            double zeta = rand_normal_sim(0.0, thermal_std);
+            double xi = pho_rng_normal(&g_sim_rng, 0.0, shot_std);
+            double zeta = pho_rng_normal(&g_sim_rng, 0.0, thermal_std);
             
             double noisy_intensity = intensity + xi + zeta;
             if (noisy_intensity < 0.0) noisy_intensity = 0.0;

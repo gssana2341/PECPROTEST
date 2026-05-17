@@ -102,6 +102,10 @@ Token lexer_next(Lexer *lex) {
     if (c == '"') {
         token.start = lex->current; // Do not include opening quote in string token value
         while (*lex->current != '"' && *lex->current != '\0') {
+            if (*lex->current == '\\' && lex->current[1] != '\0') {
+                lex->current += 2; // skip escaped character (e.g. \", \\, \n)
+                continue;
+            }
             if (*lex->current == '\n') {
                 lex->line++;
             }
