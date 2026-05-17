@@ -158,6 +158,8 @@ To scale this open-source suite into standard commercial silicon foundries and a
     Transition our high-fidelity HIL simulation drivers into physical micro-control drivers for laboratory testing of real silicon photonics chips fabricated by global open foundries (e.g., IMEC or AIM Photonics).
 3.  **Spatial-Temporal Neural EKF Control**:
     Scale our EKF algorithm into a **Multi-agent Neural EKF** or Reinforcement Learning agent capable of simultaneously mitigating complex, non-linear thermal cross-talk across ultra-dense meshes with over $10,000$ active waveguides.
+4.  **Microcontroller & Edge AI Deployment**:
+    Refactoring the core data types (transitioning from `double` to `float`) and abstracting threading models to support direct deployment on low-power Edge devices like ESP32 or ARM Cortex-M, converting the software engine into a practical Edge AI smart-sensor controller.
 
 ---
 
@@ -262,7 +264,15 @@ This repository contains a full automated suite validating the mathematics and c
 # 1. Recompile shared and static libraries
 make clean && make
 
-# 2. Run mathematical Clements Decomposition test ( Frobenius Error < 10^-12 )
+# 2. Run Core Engine Unit Tests (Math, Activation, Memory Leak Check)
+gcc -Wall -Wextra -O2 -fopenmp -I./photonic/core -I./photonic/sim -I./photonic/training -o test_runner photonic/tests/test_runner.c libphotonic.a -lm
+./test_runner
+
+# 3. Run Analytic Gradient vs Finite Difference Benchmark (Loss & Backprop)
+gcc -Wall -Wextra -O2 -fopenmp -I./photonic/core -I./photonic/sim -I./photonic/training -o test_analytic photonic/tests/test_analytic.c libphotonic.a -lm
+./test_analytic
+
+# 4. Run mathematical Clements Decomposition test ( Frobenius Error < 10^-12 )
 ./test_clements_reconstruction
 
 # 3. Run real-time EKF Closed-loop Phase Tracking test ( Error < 0.02 rad )
