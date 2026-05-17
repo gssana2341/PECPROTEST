@@ -1,0 +1,16 @@
+photon network MNIST_Classifier {
+    // Downsample input 28x28 -> 8x8 (64 ports)
+    lens pool(28, 8)
+    
+    // Photonic layers scaled to 64x64 unitary with Kerr non-linearity and high TIA gain
+    layer unitary(64) kerr(0.5) gain(15.0)
+    layer unitary(64) kerr(0.5) gain(15.0)
+    
+    // Classify output over 10 digits
+    readout softmax(10)
+    
+    // Riemannian SGD Optimizer configuration with early stopping (patience = 10)
+    // and physical noise settings (default is clean: phase_noise=0.0, shot_noise=0.0)
+    train riemannian(lr=0.01, epochs=200, batch_size=32, early_stop=10,
+                     phase_noise=0.0, shot_noise=0.0)
+}

@@ -1,0 +1,34 @@
+# Photonic Computing Engine - Git Ignore
+
+# 1. Compiled Binaries (WSL / Unix Executables)
+phoc
+mnist_run
+*.o
+*.a
+*.so
+*.out
+
+# 2. Automatically Generated Files by PhoLang Transpiler
+photonic/lang/mnist_compiled.c
+
+# 3. Large Datasets & Generated CSVs (Keep directory structure but ignore files)
+data/*.csv
+!data/README.md
+
+# 4. Python Cache & Environment Files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.ipynb_checkpoints/
+.pytest_cache/
+
+# 5. Local IDE Settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 6. AI Agent Workspace Cache
+.gemini/
+antigravity/
