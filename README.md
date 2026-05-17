@@ -9,6 +9,24 @@ An academic-grade, mathematically rigorous simulation, compilation, and optimiza
 > [!NOTE]
 > **Project Deployment Status**: This suite is currently an **advanced, high-fidelity optoelectronic numerical simulation and hardware-in-the-loop (HIL) calibration software platform**. While it is designed to be pre-production ready for physical chip integration (providing standardized HAL driver signatures and EKF control systems), all active benchmarks and results have been validated within our high-fidelity, noise-aware physical emulation environments, not on a physical integrated optical chip in a laboratory.
 
+## 🚀 Photonic Neural Network Pipeline
+
+```mermaid
+graph LR
+    A[Input Data<br/>e.g. MNIST] --> B(Laser Modulator<br/>Phase Encoder)
+    B --> C{MZI Optical Mesh<br/>Unitary Weights W}
+    C -->|Coherent Light| D(Optical Activation<br/>Kerr Non-linearity)
+    D --> E{Photodetector<br/>Shot/Thermal Noise}
+    E --> F[Output Prediction<br/>Softmax Class]
+    
+    style A fill:#2d3436,stroke:#74b9ff,stroke-width:2px,color:#fff
+    style B fill:#0984e3,stroke:#74b9ff,stroke-width:2px,color:#fff
+    style C fill:#6c5ce7,stroke:#a29bfe,stroke-width:4px,color:#fff
+    style D fill:#d63031,stroke:#ff7675,stroke-width:2px,color:#fff
+    style E fill:#e17055,stroke:#fab1a0,stroke-width:2px,color:#fff
+    style F fill:#00b894,stroke:#55efc4,stroke-width:2px,color:#fff
+```
+
 ---
 
 ## 📖 Table of Contents
