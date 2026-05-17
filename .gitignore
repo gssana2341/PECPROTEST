@@ -7,6 +7,8 @@ mnist_run
 *.a
 *.so
 *.out
+test_insitu
+*.phomodel
 
 # 2. Automatically Generated Files by PhoLang Transpiler
 photonic/lang/mnist_compiled.c
