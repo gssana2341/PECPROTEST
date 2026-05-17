@@ -109,8 +109,6 @@ Physical waveguides are highly sensitive to thermal walk, causing phase drifts t
 *   **Sign-Preserving Floor**: Active mathematical safeguards ($10^{-6}$ epsilon bounds) prevent filter lock-up near 0 or $\pi$ rad.
 *   **Drift Precision**: Stabilizes phase error to **0.013 rad** under extreme thermal walks.
 
-![EKF Phase Drift Convergence](docs/images/ekf_phase_drift_convergence.png)
-
 ---
 
 ## 7. 🗜️ DAC-Aware Model Compression & Quantization Sweeps
@@ -120,8 +118,6 @@ Edge deployment requires mapping analog phase voltages using low-bit Digital-to-
 *   **Physical Phase Reconstruction**: Solved port indexing and Givens rotation sign bugs (`phi = angle_p - angle_q`), achieving a reconstruction Frobenius error of **$3.58 \times 10^{-12}$**.
 *   **Phase Voltage Clamping Solution**: Scaled the DAC quantization ceiling to $V_{2\pi} = V_{\pi}\sqrt{2} \approx 1.414 V_{\pi}$ to accommodate full $2\pi$ phase shifts of the external phase shifters $\phi$, eliminating arbitrary clipping of phases $> \pi$.
 *   **Multi-Dimensional Sweep**: Evaluates accuracy degradation across DAC bit-depths (4, 6, 8, 12, 16 bits) and soft phase pruning thresholds.
-
-![DAC Quantization & Heater Pruning Sweep](docs/images/dac_quantization_heater_sweep.png)
 
 ---
 
@@ -144,8 +140,6 @@ Detailed empirical evaluation results of the Silicon Photonics computing engine 
 | **04** | **Uncompensated Control** | 0.00 / 0.00 | 0.10 / 0.05 | **89.00%** | **89.00%** | Severe degradation (-1.92%) without noise-aware training |
 | **05** | **In-Situ Hybrid HIL** | Emulated DAC/ADC | 8% Cross-talk | **76.00%** | **76.00%** | Live Calibration compensated 8% coupling in real-time |
 | **06** | **Clements MZI Sweep** | 0.00 / 0.00 | Quantized & Pruned | **70.67%** | **70.67%** | **16-bit 0.20rad saves 8.64% Heaters** with zero loss |
-
-![MNIST Baseline Training Convergence](docs/images/mnist_baseline_clean.png)
 
 ---
 
