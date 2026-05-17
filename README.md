@@ -157,8 +157,8 @@ Using `#pragma omp parallel for reduction(+:total_loss, correct_predictions)`, t
 | :--- | :--- | :--- | :---: | :--- |
 | **Clean Baseline** | Clean ($\sigma_{\phi}=0$) | Clean ($\sigma_{\phi}=0$) | **91.75%** | Flawless, smooth generalization curves |
 | **Mild Hardware Drift**| Noisy ($\sigma_{\phi}=0.02$) | Noisy ($\sigma_{\phi}=0.02$) | **91.58%** | Extremely stable under standard optoelectronic fluctuations |
-| **Severe Hardware Drift**| Noisy ($\sigma_{\phi}=0.10$) | Noisy ($\sigma_{\phi}=0.10$) | *To be tested* | Proving Stiefel manifold regularizing effect |
-| **Uncompensated (Control)** | Clean ($\sigma_{\phi}=0$) | Noisy ($\sigma_{\phi}=0.10$) | *To be tested* | Highlights complete failure of non-noise-aware models |
+| **Severe Hardware Drift**| Noisy ($\sigma_{\phi}=0.10$) | Noisy ($\sigma_{\phi}=0.10$) | **90.92%** | Robust convergence; noise acts as a Riemannian regularizer |
+| **Uncompensated (Control)** | Clean ($\sigma_{\phi}=0$) | Noisy ($\sigma_{\phi}=0.10$) | **89.00%** | Severe degradation (-1.92%) without noise-aware training |
 
 ---
 
