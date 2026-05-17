@@ -44,7 +44,7 @@ Operating programmatically in the complex domain $\mathbb{C}$ under strict energ
 ### A. Complex-Valued Wirtinger Calculus
 Standard gradient descent fails for complex variables because real-valued loss functions $L: \mathbb{C}^N \to \mathbb{R}$ are non-holomorphic. We resolve this using **Wirtinger Calculus**, computing independent derivatives with respect to the complex weights $W$ and their conjugate $W^*$:
 
-$$\nabla_{W^*}\! L = 2 \frac{\partial L}{\partial W^*}, \quad \frac{\partial L}{\partial W_{ij}} = \delta_i \cdot x_j^*$$
+$$\nabla_{W^{\ast}}\! L = 2 \frac{\partial L}{\partial W^{\ast}}, \quad \frac{\partial L}{\partial W_{ij}} = \delta_i \cdot x_{j}^{\ast}$$
 
 ### B. Riemannian Optimization on the Stiefel (Unitary) Manifold
 To enforce physical energy conservation, weight matrices must remain strictly Unitary ($W^\dagger W = \mathbf{I}$). Standard gradient steps would destroy unitariness. We enforce this constraint geometrically using **Riemannian SGD** on the Stiefel Manifold via the **Cayley Transform**:
