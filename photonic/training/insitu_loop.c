@@ -163,6 +163,13 @@ int run_insitu_training(SimState *sim, const InSituConfig *cfg) {
 
             // Apply C Riemannian Cayley Unitary Updates
             for (int l = 0; l < num_layers; l++) {
+                // Average the accumulated batch gradients over the batch size
+                for (int idx = 0; idx < dim * dim; idx++) {
+                    batch_grads[l].data[idx] = complex_new(
+                        batch_grads[l].data[idx].real / (double)current_batch_size,
+                        batch_grads[l].data[idx].imag / (double)current_batch_size
+                    );
+                }
                 unitary_update_cayley(&sim->layers[l].weights, &batch_grads[l], cfg->lr);
                 matrix_free(&batch_grads[l]);
             }

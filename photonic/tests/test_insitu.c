@@ -46,7 +46,7 @@ int main(void) {
     InSituConfig cfg;
     cfg.epochs = 2; // Run a quick 2-epoch sweep to verify stability
     cfg.batch_size = 16;
-    cfg.lr = 0.05;
+    cfg.lr = 0.01;
     cfg.data_csv = csv_path;
     
     // Optoelectronic thermal properties

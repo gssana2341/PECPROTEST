@@ -313,6 +313,7 @@ PhoResult pho_network_train(PhoNetwork* net, const char* data_csv, PhoTrainConfi
 
                 // Dynamic analytical backpropagation
                 Complex current_grad[dim];
+                memset(current_grad, 0, dim * sizeof(Complex));
                 loss_cross_entropy_softmax_optical_grad(output_c, gain, target, 10, current_grad);
 
                 for (int l = num_layers - 1; l >= 0; l--) {
@@ -345,6 +346,13 @@ PhoResult pho_network_train(PhoNetwork* net, const char* data_csv, PhoTrainConfi
 
             // Apply Riemannian SGD Unitary Updates (Cayley Transform)
             for (int l = 0; l < num_layers; l++) {
+                // Average the accumulated batch gradients over the batch size
+                for (int idx = 0; idx < dim * dim; idx++) {
+                    batch_grad_accum[l].data[idx] = complex_new(
+                        batch_grad_accum[l].data[idx].real / (double)current_batch_size,
+                        batch_grad_accum[l].data[idx].imag / (double)current_batch_size
+                    );
+                }
                 unitary_update_cayley(&net->sim.layers[l].weights, &batch_grad_accum[l], lr);
                 matrix_free(&batch_grad_accum[l]);
             }
