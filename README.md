@@ -194,6 +194,24 @@ double corrected_voltage = v_pi * sqrt(ekf.phase / M_PI);
 hal_dac_write_voltage(0, corrected_voltage);
 ```
 
+### C. Universal Library Integration (MATLAB, LabVIEW, SystemVerilog)
+Since our core simulation engine is compiled as a standard dynamic shared library (`libphotonic.so` / `libphotonic.dll`) and a static archive (`libphotonic.a`), you can load and call any analytical calibration or drift-correction API directly from other industrial hardware testbeds without rewriting any code:
+
+*   **MATLAB (Scientific Modeling)**:
+    ```matlab
+    % Load the compiled C shared library
+    loadlibrary('libphotonic.so', 'pholang.h');
+    % Call any analytical function directly
+    calllib('libphotonic', 'clements_decompose', ...);
+    ```
+*   **LabVIEW (Optoelectronic Lab Instrumentation)**:
+    Simply drag-and-drop a **Call Library Function Node** onto your Block Diagram, select `libphotonic.dll`/`.so`, and map the function parameters to drive physical piezo-actuators or thermal micro-heaters.
+*   **SystemVerilog DPI-C (Semiconductor ASIC/FPGA Co-Simulation)**:
+    Import our fast physics C models directly into your SystemVerilog chip design testbench for digital-optical co-simulation:
+    ```systemverilog
+    import "DPI-C" function void clements_decompose(input int n, ...);
+    ```
+
 ---
 
 ## 11. Compilation, Verification & Execution Guide
