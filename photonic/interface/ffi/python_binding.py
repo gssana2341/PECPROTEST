@@ -82,6 +82,10 @@ class PhotonicNetwork:
         lib.pho_network_load_weights.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
         lib.pho_network_load_weights.restype = ctypes.c_void_p
 
+        # pho_network_compress
+        lib.pho_network_compress.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_double]
+        lib.pho_network_compress.restype = ctypes.c_double
+
         # pho_network_free
         lib.pho_network_free.argtypes = [ctypes.c_void_p]
         lib.pho_network_free.restype = None
@@ -137,6 +141,10 @@ class PhotonicNetwork:
         if ret < 0:
             err = self._lib.pho_last_error().decode('utf-8')
             raise RuntimeError(f"Failed to save weight file: {err}")
+
+    def compress(self, dac_bits: int, pruning_threshold: float) -> float:
+        """Applies DAC-aware pruning and quantization to weight matrices. Returns savings percentage."""
+        return self._lib.pho_network_compress(self._handle, dac_bits, ctypes.c_double(pruning_threshold))
 
     def __del__(self):
         """Cleans up internal C network allocations on garbage collection."""

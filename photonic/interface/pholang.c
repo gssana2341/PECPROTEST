@@ -8,6 +8,8 @@
 #include "../core/memory.h"
 #include "../lang/ast.h"
 #include "../lang/lexer.h"
+#include "../training/compression.h"
+#include "../interface/hardware/calibration.h"
 ASTNode *parser_parse(const char *source);
 #include "../examples/mnist_small/pooling.h"
 #include "../training/unitary_sgd.h"
@@ -161,15 +163,14 @@ PhoNetwork* pho_network_load(const char* pho_file) {
             net->sim.layers[current_layer].kerr_gamma = kerr;
             net->sim.layers[current_layer].detector_gain = gain;
             
-            // Initialize with unitary matrices perturbed by slight noise to break symmetry
+            // Initialize with perfect unitary Identity matrices to ensure the Stiefel manifold constraint
+            // holds strictly from the very beginning, allowing Cayley updates to preserve 100% unitarity!
             for (int i = 0; i < layer_dim; i++) {
                 for (int j = 0; j < layer_dim; j++) {
-                    double noise_r = ((double)rand() / RAND_MAX - 0.5) * 0.1;
-                    double noise_i = ((double)rand() / RAND_MAX - 0.5) * 0.1;
                     if (i == j) {
-                        net->sim.layers[current_layer].weights.data[i * layer_dim + j] = complex_new(1.0 + noise_r, noise_i);
+                        net->sim.layers[current_layer].weights.data[i * layer_dim + j] = complex_new(1.0, 0.0);
                     } else {
-                        net->sim.layers[current_layer].weights.data[i * layer_dim + j] = complex_new(noise_r, noise_i);
+                        net->sim.layers[current_layer].weights.data[i * layer_dim + j] = complex_new(0.0, 0.0);
                     }
                 }
             }
@@ -223,7 +224,7 @@ PhoResult pho_network_train(PhoNetwork* net, const char* data_csv, PhoTrainConfi
     int num_train = (int)(dataset.num_samples * 0.8);
     int num_test = dataset.num_samples - num_train;
 
-    int epochs = (cfg.epochs > 0) ? cfg.epochs : net->epochs;
+    int epochs = (cfg.epochs >= 0) ? cfg.epochs : net->epochs;
     double lr = (cfg.lr > 0.0) ? cfg.lr : net->learning_rate;
     int batch_size = (cfg.batch_size > 0) ? cfg.batch_size : net->batch_size;
 
@@ -238,6 +239,64 @@ PhoResult pho_network_train(PhoNetwork* net, const char* data_csv, PhoTrainConfi
     Matrix *best_weights = (Matrix *)malloc(num_layers * sizeof(Matrix));
     for (int l = 0; l < num_layers; l++) {
         best_weights[l] = matrix_copy(&net->sim.layers[l].weights);
+    }
+
+    if (epochs == 0) {
+        // Just run evaluation pass once
+        double test_loss = 0.0;
+        int test_correct = 0;
+
+        #pragma omp parallel for reduction(+:test_loss, test_correct)
+        for (int i = 0; i < num_test; i++) {
+            int sample_idx = num_train + i;
+            const double *img = dataset.samples[sample_idx].pixels;
+            int label = dataset.samples[sample_idx].label;
+
+            double target[10] = {0};
+            target[label] = 1.0;
+
+            double pool_buf[64];
+            optical_lens_pool_28_to_8(img, pool_buf);
+
+            Complex input_c[dim];
+            for (int k = 0; k < dim; k++) {
+                if (k < 64) {
+                    input_c[k] = complex_new(pool_buf[k], 0.0);
+                } else {
+                    input_c[k] = complex_new(0.0, 0.0);
+                }
+            }
+
+            Complex output_c[dim];
+            sim_forward(&net->sim, input_c, output_c);
+
+            double probs[10] = {0};
+            double gain = net->sim.layers[num_layers - 1].detector_gain;
+            double loss = loss_cross_entropy_softmax_optical(output_c, gain, target, 10, probs);
+            test_loss += loss;
+
+            int max_class = 0;
+            double max_prob = -1.0;
+            for (int c = 0; c < 10; c++) {
+                if (probs[c] > max_prob) {
+                    max_prob = probs[c];
+                    max_class = c;
+                }
+            }
+            if (max_class == label) {
+                test_correct++;
+            }
+        }
+
+        final_res.final_loss = test_loss / num_test;
+        final_res.final_accuracy = (double)test_correct / num_test * 100.0;
+
+        for (int l = 0; l < num_layers; l++) {
+            matrix_free(&best_weights[l]);
+        }
+        free(best_weights);
+        free_dataset(&dataset);
+        return final_res;
     }
 
     printf("=== Starting PhoLang Public C API Dynamic Training Loop ===\n");
@@ -590,7 +649,184 @@ PhoNetwork* pho_network_load_weights(const char* pho_file, const char* weights_p
     return net;
 }
 
-// 5. Free network structure allocations
+// 5. Model Compression & Quantization API
+double pho_network_compress(PhoNetwork* net, int dac_bits, double pruning_threshold) {
+    if (!net) return 0.0;
+
+    int num_layers = net->sim.num_layers;
+    int N = net->sim.layer_dim;
+    int n_mzis = N * (N - 1) / 2;
+
+    int total_heaters_pruned = 0;
+    int total_heaters = num_layers * n_mzis * 2;
+
+    double v_pi = 3.3; // Standard physical constants
+    double levels = (double)((1 << dac_bits) - 1);
+    double v_lsb = v_pi / levels;
+    // Strategy B phase step LSB LSB: theta_min = Pi * (V_lsb / V_pi)^2
+    double theta_min_step = M_PI * (v_lsb / v_pi) * (v_lsb / v_pi);
+
+    // We will use the user's requested threshold if it is larger than theta_min_step, or theta_min_step otherwise!
+    double active_threshold = (pruning_threshold > theta_min_step) ? pruning_threshold : theta_min_step;
+
+    for (int l = 0; l < num_layers; l++) {
+        Matrix *W = &net->sim.layers[l].weights;
+
+        double *thetas = (double *)calloc(n_mzis, sizeof(double));
+        double *phis = (double *)calloc(n_mzis, sizeof(double));
+        Complex *diagonal = (Complex *)calloc(N, sizeof(Complex));
+        if (!thetas || !phis || !diagonal) {
+            free(thetas);
+            free(phis);
+            free(diagonal);
+            return 0.0;
+        }
+
+        // 1. Decompose W using Clements Givens rotations
+        double u_err_before = matrix_unitarity_error(W);
+        printf("[Compression Info] Layer %d Original W Unitarity Error ||W^H*W - I||_F: %.12f\n", l, u_err_before);
+
+        Matrix U = matrix_copy(W);
+        int mzi_idx = 0;
+        for (int col = 0; col < N - 1; col++) {
+            for (int row = N - 1; row > col; row--) {
+                int p = row - 1;
+                int q = row;
+
+                Complex u_p = U.data[p * N + col];
+                Complex u_q = U.data[q * N + col];
+
+                double r_p = complex_norm(u_p);
+                double r_q = complex_norm(u_q);
+
+                double theta = 0.0;
+                double phi = 0.0;
+
+                if (r_q > 1e-12) {
+                    theta = atan2(r_q, r_p);
+                    double angle_p = atan2(u_p.imag, u_p.real);
+                    double angle_q = atan2(u_q.imag, u_q.real);
+                    phi = angle_p - angle_q;
+                }
+
+                if (phi < 0.0) phi += 2.0 * M_PI;
+                if (theta < 0.0) theta += 2.0 * M_PI;
+
+                thetas[mzi_idx] = theta;
+                phis[mzi_idx] = phi;
+                mzi_idx++;
+
+                Complex c = complex_new(cos(theta), 0.0);
+                Complex s = complex_new(sin(theta) * cos(phi), sin(theta) * sin(phi));
+                Complex s_conj = complex_conj(s);
+
+                for (int k = 0; k < N; k++) {
+                    Complex up_k = U.data[p * N + k];
+                    Complex uq_k = U.data[q * N + k];
+
+                    U.data[p * N + k] = complex_add(complex_mul(c, up_k), complex_mul(s, uq_k));
+                    U.data[q * N + k] = complex_sub(complex_mul(c, uq_k), complex_mul(s_conj, up_k));
+                }
+            }
+        }
+
+        double u_off_diag = 0.0;
+        double norm_sum = 0.0;
+        for (int i = 0; i < N; i++) {
+            norm_sum += complex_norm_sq(U.data[i * N + i]);
+            for (int j = 0; j < N; j++) {
+                if (i != j) {
+                    u_off_diag += complex_norm_sq(U.data[i * N + j]);
+                }
+            }
+        }
+        printf("[Compression Info] Layer %d Decomposed U Off-Diagonal Frobenius Norm: %.12f\n", l, sqrt(u_off_diag));
+        printf("[Compression Info] Layer %d Decomposed U Diagonal Norm Sum: %.12f (Expected: %.12f)\n", l, norm_sum, (double)N);
+
+        // Store remaining diagonal phases and normalize their norm to 1.0 to enforce strict mathematical unitarity!
+        for (int i = 0; i < N; i++) {
+            double norm = complex_norm(U.data[i * N + i]);
+            if (norm > 1e-12) {
+                diagonal[i] = complex_new(U.data[i * N + i].real / norm, U.data[i * N + i].imag / norm);
+            } else {
+                diagonal[i] = complex_new(1.0, 0.0);
+            }
+        }
+        matrix_free(&U);
+
+        // 2. Perform soft/DAC-aware pruning and DAC quantization
+        double max_voltage_limit = v_pi * sqrt(2.0); // Allow full phase shift up to 2*pi
+        for (int i = 0; i < n_mzis; i++) {
+            // θ
+            double angle_th = fmod(thetas[i], 2.0 * M_PI);
+            if (angle_th < 0.0) angle_th += 2.0 * M_PI;
+            double dist_th = (angle_th > M_PI) ? (2.0 * M_PI - angle_th) : angle_th;
+            if (dist_th < active_threshold) {
+                thetas[i] = 0.0;
+                total_heaters_pruned++;
+            } else {
+                double v = v_pi * sqrt(angle_th / M_PI);
+                double v_quant = compress_quantize_voltage(v, dac_bits, max_voltage_limit);
+                thetas[i] = M_PI * (v_quant / v_pi) * (v_quant / v_pi);
+            }
+
+            // φ
+            double angle_ph = fmod(phis[i], 2.0 * M_PI);
+            if (angle_ph < 0.0) angle_ph += 2.0 * M_PI;
+            double dist_ph = (angle_ph > M_PI) ? (2.0 * M_PI - angle_ph) : angle_ph;
+            if (dist_ph < active_threshold) {
+                phis[i] = 0.0;
+                total_heaters_pruned++;
+            } else {
+                double v = v_pi * sqrt(angle_ph / M_PI);
+                double v_quant = compress_quantize_voltage(v, dac_bits, max_voltage_limit);
+                phis[i] = M_PI * (v_quant / v_pi) * (v_quant / v_pi);
+            }
+        }
+
+        // 3. Reconstruct weight matrix U from pruned/quantized phases
+        Matrix W_pruned = matrix_new(N, N);
+        clements_reconstruct(N, thetas, phis, diagonal, &W_pruned);
+
+        // 4. Verify unitarity error and print it
+        double u_err = matrix_unitarity_error(&W_pruned);
+        printf("[Compression Info] Layer %d Unitarity Error ||W^H*W - I||_F: %.12f\n", l, u_err);
+
+        // Measure actual difference from original weights matrix W
+        double diff_sq = 0.0;
+        double diff_adj = 0.0, diff_trans = 0.0, diff_conj = 0.0;
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < N; j++) {
+                Complex w_ij = W->data[i * N + j];
+                Complex wp_ij = W_pruned.data[i * N + j];
+                Complex wp_ji = W_pruned.data[j * N + i];
+
+                diff_sq += complex_norm_sq(complex_sub(w_ij, wp_ij));
+                diff_adj += complex_norm_sq(complex_sub(w_ij, complex_conj(wp_ji)));
+                diff_trans += complex_norm_sq(complex_sub(w_ij, wp_ji));
+                diff_conj += complex_norm_sq(complex_sub(w_ij, complex_conj(wp_ij)));
+            }
+        }
+        printf("[Compression Info] Layer %d Reconstruction Diff ||W - W_pruned||_F: %.12f\n", l, sqrt(diff_sq));
+        printf("[Compression Info] Layer %d Diff Adjoint: %.12f, Transpose: %.12f, Conjugate: %.12f\n", 
+               l, sqrt(diff_adj), sqrt(diff_trans), sqrt(diff_conj));
+
+        // Write new weights back to the active network memory
+        memcpy(W->data, W_pruned.data, N * N * sizeof(Complex));
+        matrix_free(&W_pruned);
+
+        free(thetas);
+        free(phis);
+        free(diagonal);
+    }
+
+    double savings_pct = 100.0 * (double)total_heaters_pruned / (double)total_heaters;
+    printf("[Compression Success] Pruned Heaters: %d / %d (%.2f%%) at %d-bit resolution\n",
+           total_heaters_pruned, total_heaters, savings_pct, dac_bits);
+    return savings_pct;
+}
+
+// 6. Free network structure allocations
 void pho_network_free(PhoNetwork* net) {
     if (net) {
         sim_free(&net->sim);

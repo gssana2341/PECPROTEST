@@ -40,10 +40,13 @@ int         pho_network_save(PhoNetwork* net, const char* path);
 PhoNetwork* pho_network_load_weights(const char* pho_file,
                                       const char* weights_path);
 
-// 5. Free network structure allocations
+// 5. Model Compression & Quantization API
+double      pho_network_compress(PhoNetwork* net, int dac_bits, double pruning_threshold);
+
+// 6. Free network structure allocations
 void        pho_network_free(PhoNetwork* net);
 
-// 6. Thread-safe error reporting API
+// 7. Thread-safe error reporting API
 const char* pho_last_error(void);
 
 #endif // PHOLANG_H
