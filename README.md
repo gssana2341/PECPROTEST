@@ -156,7 +156,7 @@ Using `#pragma omp parallel for reduction(+:total_loss, correct_predictions)`, t
 | Experiment Condition | Training Setup | Evaluation Setup | Test Accuracy (6,000 Samples) | Key Physical Insight |
 | :--- | :--- | :--- | :---: | :--- |
 | **Clean Baseline** | Clean ($\sigma_{\phi}=0$) | Clean ($\sigma_{\phi}=0$) | **91.75%** | Flawless, smooth generalization curves |
-| **Mild Hardware Drift**| Noisy ($\sigma_{\phi}=0.02$) | Noisy ($\sigma_{\phi}=0.02$) | *Running* | Stable under typical room-temperature fluctuations |
+| **Mild Hardware Drift**| Noisy ($\sigma_{\phi}=0.02$) | Noisy ($\sigma_{\phi}=0.02$) | **91.58%** | Extremely stable under standard optoelectronic fluctuations |
 | **Severe Hardware Drift**| Noisy ($\sigma_{\phi}=0.10$) | Noisy ($\sigma_{\phi}=0.10$) | *To be tested* | Proving Stiefel manifold regularizing effect |
 | **Uncompensated (Control)** | Clean ($\sigma_{\phi}=0$) | Noisy ($\sigma_{\phi}=0.10$) | *To be tested* | Highlights complete failure of non-noise-aware models |
 
