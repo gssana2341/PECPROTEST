@@ -109,6 +109,8 @@ Physical waveguides are highly sensitive to thermal walk, causing phase drifts t
 *   **Sign-Preserving Floor**: Active mathematical safeguards ($10^{-6}$ epsilon bounds) prevent filter lock-up near 0 or $\pi$ rad.
 *   **Drift Precision**: Stabilizes phase error to **0.013 rad** under extreme thermal walks.
 
+![EKF Phase Drift Convergence](docs/images/ekf_phase_drift_convergence.png)
+
 ---
 
 ## 7. 🗜️ DAC-Aware Model Compression & Quantization Sweeps
@@ -118,6 +120,8 @@ Edge deployment requires mapping analog phase voltages using low-bit Digital-to-
 *   **Physical Phase Reconstruction**: Solved port indexing and Givens rotation sign bugs (`phi = angle_p - angle_q`), achieving a reconstruction Frobenius error of **$3.58 \times 10^{-12}$**.
 *   **Phase Voltage Clamping Solution**: Scaled the DAC quantization ceiling to $V_{2\pi} = V_{\pi}\sqrt{2} \approx 1.414 V_{\pi}$ to accommodate full $2\pi$ phase shifts of the external phase shifters $\phi$, eliminating arbitrary clipping of phases $> \pi$.
 *   **Multi-Dimensional Sweep**: Evaluates accuracy degradation across DAC bit-depths (4, 6, 8, 12, 16 bits) and soft phase pruning thresholds.
+
+![DAC Quantization & Heater Pruning Sweep](docs/images/dac_quantization_heater_sweep.png)
 
 ---
 
