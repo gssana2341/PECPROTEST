@@ -128,7 +128,7 @@ Physical waveguides are highly sensitive to thermal walk, causing phase drifts t
 *   **Sign-Preserving Floor**: Active mathematical safeguards ($10^{-6}$ epsilon bounds) prevent filter lock-up near 0 or $\pi$ rad.
 *   **Drift Precision**: Stabilizes phase error to **0.013 rad** under extreme thermal walks.
 
-![EKF Phase Drift Convergence](docs/images/ekf_phase_drift_convergence.png)
+
 
 ---
 
@@ -140,7 +140,7 @@ Edge deployment requires mapping analog phase voltages using low-bit Digital-to-
 *   **Phase Voltage Clamping Solution**: Scaled the DAC quantization ceiling to $V_{2\pi} = V_{\pi}\sqrt{2} \approx 1.414 V_{\pi}$ to accommodate full $2\pi$ phase shifts of the external phase shifters $\phi$, eliminating arbitrary clipping of phases $> \pi$.
 *   **Multi-Dimensional Sweep**: Evaluates accuracy degradation across DAC bit-depths (4, 6, 8, 12, 16 bits) and soft phase pruning thresholds.
 
-![DAC Quantization & Heater Pruning Sweep](docs/images/dac_quantization_heater_sweep.png)
+
 
 ---
 
@@ -194,7 +194,7 @@ import numpy as np
 net = PhotonicNetwork(b"photonic/lang/mnist.pho")
 
 # 2. Restore pre-trained binary weights (.phomodel format)
-net.load_weights(b"temp_baseline_trained.phomodel")
+net.load_weights(b"models/mnist_trained.phomodel")
 
 # 3. Prepare a 64-dimensional complex-valued optical input vector
 test_input = np.random.randn(64).astype(np.complex64)
@@ -218,7 +218,7 @@ For real-time microcontroller/FPGA HIL calibration inside the lab, call the high
 
 // 1. Initialize network and load physical weights
 PhoNetwork *net = pho_network_load("photonic/lang/mnist.pho");
-pho_network_load_weights("photonic/lang/mnist.pho", "temp_baseline_trained.phomodel");
+pho_network_load_weights("photonic/lang/mnist.pho", "models/mnist_trained.phomodel");
 
 // 2. Perform Clements MZI Decomposition to extract physical phases
 double thetas[4096], phis[4096], diagonal[64];
@@ -257,48 +257,13 @@ Since our core simulation engine is compiled as a standard dynamic shared librar
 
 ## 12. Compilation, Verification & Execution Guide
 
-### 1. Compile and Execute the PhoLang Compiler (`phoc`)
-```sh
-# 1. Compile the compiler
-gcc -Wall -Wextra -O2 photonic/core/memory.c photonic/lang/lexer.c photonic/lang/parser.c photonic/lang/ast.c photonic/lang/codegen.c photonic/lang/compiler_main.c -o phoc -lm
+You can now build and run the entire suite using `make`:
 
-# 2. Transpile the neural network definition into parallel C code
-./phoc photonic/lang/mnist.pho photonic/lang/mnist_compiled.c
+```bash
+make          # build library
+make phoc     # build compiler
+make demo     # รัน MNIST demo
+make test     # run tests
 ```
 
-### 2. Compile and Run the Core C Engine
-```sh
-# 1. Compile the main program with OpenMP acceleration
-gcc -Wall -Wextra -O2 -fopenmp photonic/core/*.c photonic/sim/*.c photonic/training/*.c photonic/examples/mnist_small/pooling.c photonic/lang/mnist_compiled.c -o mnist_run -lm
-
-# 2. Run training with active physical waveguide drift
-./mnist_run data/mnist_scaled.csv --max-rows 6000 --seed 42 --train-phase-noise 0.02 --test-phase-noise 0.02
-```
-
-### 3. Run Verification Tests
-This repository contains a full automated suite validating the mathematics and calibration engines:
-
-```sh
-# 1. Recompile shared and static libraries
-make clean && make
-
-# 2. Run Core Engine Unit Tests (Math, Activation, Memory Leak Check)
-gcc -Wall -Wextra -O2 -fopenmp -I./photonic/core -I./photonic/sim -I./photonic/training -o test_runner photonic/tests/test_runner.c libphotonic.a -lm
-./test_runner
-
-# 3. Run Analytic Gradient vs Finite Difference Benchmark (Loss & Backprop)
-gcc -Wall -Wextra -O2 -fopenmp -I./photonic/core -I./photonic/sim -I./photonic/training -o test_analytic photonic/tests/test_analytic.c libphotonic.a -lm
-./test_analytic
-
-# 4. Run mathematical Clements Decomposition test ( Frobenius Error < 10^-12 )
-./test_clements_reconstruction
-
-# 3. Run real-time EKF Closed-loop Phase Tracking test ( Error < 0.02 rad )
-./test_kalman_drift
-
-# 4. Run dynamic Hardware-in-the-Loop (HIL) Integration test
-./test_insitu
-
-# 5. Run Python multi-dimensional DAC Quantization and Heater Pruning Sweep
-LD_LIBRARY_PATH=. python3 -u photonic/tests/test_compression.py
-```
+For more details, see our [Installation Guide](INSTALL.md) and [Quickstart](QUICKSTART.md).
