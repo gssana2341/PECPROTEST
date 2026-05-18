@@ -96,7 +96,7 @@ The simulator engine models real-world physical behavior at sub-picosecond times
 
 ## 4. PhoLang DSL & Compiler Architecture
 
-`phoc` is a custom-built compiler designed to compile abstract neural architecture definitions into highly optimized, parallelized C code.
+`pho` is a custom-built compiler designed to compile abstract neural architecture definitions into highly optimized, parallelized C code.
 
 ```
                          COMPILER PIPELINE
@@ -261,7 +261,7 @@ You can now build and run the entire suite using `make`:
 
 ```bash
 make          # build library
-make phoc     # build compiler
+make pho      # build compiler
 make demo     # รัน MNIST demo
 make test     # run tests
 ```

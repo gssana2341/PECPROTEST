@@ -29,7 +29,7 @@ The project requires the following basic tools:
 3. **Build the Project:**
    ```bash
    make       # Builds libphotonic.a and libphotonic.so
-   make phoc  # Builds the PhoLang Compiler
+   make pho   # Builds the PhoLang Compiler
    ```
 
 4. **Run the Test Suite:**
@@ -63,7 +63,7 @@ The project requires the following basic tools:
    git clone https://github.com/gssana2341/PECPROTEST.git
    cd PECPROTEST
    make
-   make phoc
+   make pho
    ```
 
 ---
@@ -87,7 +87,7 @@ We highly recommend using Windows Subsystem for Linux (WSL 2) for development.
    git clone https://github.com/gssana2341/PECPROTEST.git
    cd PECPROTEST
    make
-   make phoc
+   make pho
    make demo
    ```
 

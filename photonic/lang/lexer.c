@@ -64,7 +64,9 @@ static TokenType get_identifier_type(const char *start, int length) {
     CHECK("photon", TOK_PHOTON);
     CHECK("network", TOK_NETWORK);
     CHECK("lens", TOK_LENS);
+    CHECK("waveguide", TOK_LENS);
     CHECK("layer", TOK_LAYER);
+    CHECK("mzi_mesh", TOK_LAYER);
     CHECK("readout", TOK_READOUT);
     CHECK("train", TOK_TRAIN);
     

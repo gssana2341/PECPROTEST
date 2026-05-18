@@ -118,13 +118,13 @@ static ASTNode *parse_statement(Parser *parser) {
     return NULL;
 }
 
-// Parse lens pool(28, 4)
+// Parse waveguide/lens pool(28, 4)
 static ASTNode *parse_lens(Parser *parser) {
     Token lens_tok = parser->current;
-    parser_consume(parser, TOK_LENS, "Expected 'lens'");
+    parser_advance(parser); // Consume 'lens' or 'waveguide'
     
     Token type_tok = parser->current;
-    parser_consume(parser, TOK_IDENTIFIER, "Expected lens type (e.g. pool)");
+    parser_consume(parser, TOK_IDENTIFIER, "Expected waveguide/lens type (e.g. pool)");
     
     char type_name[256];
     int len = type_tok.length < 255 ? type_tok.length : 255;
@@ -134,7 +134,7 @@ static ASTNode *parse_lens(Parser *parser) {
     ASTNode *lens_node = ast_new(AST_LAYER_DECL, type_name, lens_tok.line);
     if (!lens_node) return NULL;
     
-    parser_consume(parser, TOK_LPAREN, "Expected '(' after lens type");
+    parser_consume(parser, TOK_LPAREN, "Expected '(' after waveguide/lens type");
     
     ASTNode *tail = NULL;
     while (!parser_check(parser, TOK_RPAREN) && !parser_check(parser, TOK_EOF) && !parser->had_error) {
@@ -167,23 +167,28 @@ static ASTNode *parse_lens(Parser *parser) {
     return lens_node;
 }
 
-// Parse layer unitary(16) kerr(0.1) gain(3.0)
+// Parse mzi_mesh(16) or layer unitary(16) kerr(0.1) gain(3.0)
 static ASTNode *parse_layer(Parser *parser) {
     Token layer_tok = parser->current;
-    parser_consume(parser, TOK_LAYER, "Expected 'layer'");
-    
-    Token type_tok = parser->current;
-    parser_consume(parser, TOK_IDENTIFIER, "Expected layer type (e.g. unitary)");
+    parser_advance(parser); // Consume 'layer' or 'mzi_mesh'
     
     char type_name[256];
-    int len = type_tok.length < 255 ? type_tok.length : 255;
-    memcpy(type_name, type_tok.start, len);
-    type_name[len] = '\0';
+    if (layer_tok.length == 8 && memcmp(layer_tok.start, "mzi_mesh", 8) == 0) {
+        // mzi_mesh(64) has type implicitly "unitary"
+        strcpy(type_name, "unitary");
+    } else {
+        Token type_tok = parser->current;
+        parser_consume(parser, TOK_IDENTIFIER, "Expected layer type (e.g. unitary)");
+        
+        int len = type_tok.length < 255 ? type_tok.length : 255;
+        memcpy(type_name, type_tok.start, len);
+        type_name[len] = '\0';
+    }
     
     ASTNode *layer_node = ast_new(AST_LAYER_DECL, type_name, layer_tok.line);
     if (!layer_node) return NULL;
     
-    parser_consume(parser, TOK_LPAREN, "Expected '(' after layer type");
+    parser_consume(parser, TOK_LPAREN, "Expected '(' after layer/mzi_mesh type");
     
     Token dim_tok = parser->current;
     parser_consume(parser, TOK_NUMBER, "Expected layer dimension");

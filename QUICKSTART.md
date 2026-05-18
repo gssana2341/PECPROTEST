@@ -8,14 +8,14 @@ PhoLang provides a very simple, declarative syntax to define your neural network
 
 Create a new file called `my_network.pho`:
 
-```phoc
+```pho
 photon network MyFirstNetwork {
-    // Downsample 28x28 image to 8x8 optical field
-    lens pool(28, 8)
+    // Downsample 28x28 image to 8x8 optical field using a physical waveguide pool
+    waveguide pool(28, 8)
     
-    // Photonic unitary layer with Kerr nonlinearity
-    layer unitary(64) kerr(0.5) gain(15.0)
-    layer unitary(64) kerr(0.5) gain(15.0)
+    // Photonic MZI meshes with Kerr nonlinearity and TIA gain
+    mzi_mesh(64) kerr(0.5) gain(15.0)
+    mzi_mesh(64) kerr(0.5) gain(15.0)
     
     // 10-class output
     readout softmax(10)
@@ -25,16 +25,21 @@ photon network MyFirstNetwork {
 }
 ```
 
-## 2. Compiling the Network
+## 2. Compiling and Running the Network
 
-Our compiler (`phoc`) translates your `.pho` file directly into optimized C code.
+Our compiler CLI (`pho`) acts as the project manager and compiler (similar to Rust's Cargo). It compiles and runs your `.pho` file directly, caching build artifacts cleanly inside the `target/` directory:
 
-Run the compiler:
+Run the network immediately:
 ```bash
-./phoc my_network.pho generated_network.c
+./pho run my_network.pho
 ```
 
-This will generate a C file (`generated_network.c`) containing the network structures, memory allocation, and the forward pass functions tailored exactly to your architecture!
+This will automatically transpile the code, build a native C executable in `target/app`, and execute it instantly with zero leftover files in your root workspace!
+
+If you only want to build the production binary without running it, use:
+```bash
+./pho build my_network.pho
+```
 
 ## 3. Running the MNIST Demo
 
